@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}报告{% endblock %}
+{% block content %}
+<div class="card-panel">
+  <h2>月度 / 年度报告</h2>
+  <div class="row">
+    <label>年 <input id="year" type="number" style="width:100px"></label>
+    <label>月 <input id="month" type="number" min="1" max="12" style="width:80px" placeholder="可留空"></label>
+    <button onclick="loadReport()">查询</button>
+  </div>
+</div>
+
+<div class="card-panel">
+  <h3>持卡评估</h3>
+  <p class="muted">对每张活跃卡给出"净年价值"，判断是否值得继续持有。</p>
+  <div id="cards-eval" class="muted">加载中...</div>
+</div>
+
+<div class="card-panel">
+  <h3>报告结果</h3>
+  <pre id="report-output" class="muted" style="white-space:pre-wrap; background:#111; padding:12px; border-radius:6px"></pre>
+</div>
+
+<script>
+const today = new Date();
+document.getElementById('year').value = today.getFullYear();
+
+async function loadReport() {
+  const y = document.getElementById('year').value;
+  const m = document.getElementById('month').value;
+  const url = m ? `/api/analysis/monthly?year=${y}&month=${m}` : `/api/analysis/yearly?year=${y}`;
+  const r = await fetch(url);
+  const data = await r.json();
+  renderReport(data);
+}
+
+function renderReport(d) {
+  if (!d.tx_count) {
+    document.getElementById('report-output').textContent = `${d.period}: 没有消费记录。`;
+    return;
+  }
+  let html = `<h4>${d.period} 汇总</h4>`;
+  html += `<p>消费笔数: <b>${d.tx_count}</b>　总消费: <b>¥${d.total_spend}</b>　总返利: <b>¥${d.total_reward}</b>　整体回报率: <b>${(d.reward_rate*100).toFixed(2)}%</b></p>`;
+  html += `<h4>按卡</h4><table><thead><tr><th>卡</th><th>消费</th><th>返利</th><th>笔数</th><th>回报率</th></tr></thead><tbody>${d.by_card.map(c => `
+    <tr><td>${c.card_label}</td><td>¥${c.spend}</td><td>¥${c.reward}</td><td>${c.tx_count}</td><td>${(c.reward_rate*100).toFixed(2)}%</td></tr>`).join('')}</tbody></table>`;
+  if (d.top_merchants.length) {
+    html += `<h4>热门商户 Top 10</h4><table><thead><tr><th>商户</th><th>消费</th><th>返利</th><th>笔数</th></tr></thead><tbody>${d.top_merchants.map(m => `
+      <tr><td>${m.merchant}</td><td>¥${m.spend}</td><td>¥${m.reward}</td><td>${m.tx_count}</td></tr>`).join('')}</tbody></table>`;
+  }
+  if (d.top_offers.length) {
+    html += `<h4>用到的优惠 Top 10</h4><ul>${d.top_offers.map(o => `<li>${o.title} (${o.hits} 次)</li>`).join('')}</ul>`;
+  }
+  document.getElementById('report-output').innerHTML = html;
+}
+
+async function loadEval() {
+  const r = await fetch('/api/cards?status=active');
+  const cards = await r.json();
+  if (!cards.length) { document.getElementById('cards-eval').textContent = '还没有卡。'; return; }
+  const rows = await Promise.all(cards.map(async c => {
+    const r = await fetch(`/api/analysis/cards/${c.id}`);
+    return r.ok ? await r.json() : null;
+  }));
+  const color = s => ({strong_keep:'#6dd47e', keep:'#6dd47e', free:'#74d0ff', marginal:'#ffb800', consider_close:'#ff6b6b', neutral:'#aaa'}[s] || '#aaa');
+  document.getElementById('cards-eval').innerHTML = `<table>
+    <thead><tr><th>卡</th><th>年费</th><th>开卡礼</th><th>权益估值</th><th>实际(近12月)</th><th>长期净收益</th><th>首年净收益</th><th>信号</th></tr></thead>
+    <tbody>${rows.filter(Boolean).map(e => `
+      <tr>
+        <td>${e.card_label}</td><td>¥${e.annual_fee}</td><td>¥${e.opening_bonus_value}</td>
+        <td>¥${e.total_benefits_estimated}</td><td>¥${e.actual_rewards_12m} (${e.actual_tx_count_12m} 笔)</td>
+        <td>¥${e.net_ongoing_annual}</td><td>¥${e.net_first_year}</td>
+        <td style="color:${color(e.signal)}">${e.signal}</td>
+      </tr>`).join('')}</tbody></table>`;
+}
+
+loadReport();
+loadEval();
+</script>
+{% endblock %}

@@ -26,6 +26,8 @@ class Card(Base):
     annual_fee: Mapped[float] = mapped_column(Float, default=0.0)
     annual_fee_waiver: Mapped[str | None] = mapped_column(Text, nullable=True)
     points_rule: Mapped[str | None] = mapped_column(Text, nullable=True)
+    opening_bonus_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    opening_bonus_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     opened_at: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="active")  # active/closed/pending
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -46,6 +48,7 @@ class Benefit(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     times_per_cycle: Mapped[int | None] = mapped_column(Integer, nullable=True)
     reset_cycle: Mapped[str | None] = mapped_column(String(16), nullable=True)  # annual/monthly/quarterly
+    estimated_annual_value: Mapped[float | None] = mapped_column(Float, nullable=True)
     valid_from: Mapped[date | None] = mapped_column(Date, nullable=True)
     valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

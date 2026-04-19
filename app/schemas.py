@@ -11,6 +11,8 @@ class CardIn(BaseModel):
     annual_fee: float = 0.0
     annual_fee_waiver: str | None = None
     points_rule: str | None = None
+    opening_bonus_value: float | None = None
+    opening_bonus_description: str | None = None
     opened_at: date | None = None
     status: str = "active"
     notes: str | None = None
@@ -29,6 +31,7 @@ class BenefitIn(BaseModel):
     description: str | None = None
     times_per_cycle: int | None = None
     reset_cycle: str | None = None
+    estimated_annual_value: float | None = None
     valid_from: date | None = None
     valid_until: date | None = None
 

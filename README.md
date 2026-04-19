@@ -19,6 +19,16 @@
 - Web UI：`/scrapers` 一键触发 + 历史记录。
 - Agent 工具：对话中可说"跑一下卡惠爬虫"。
 
+**期三：分析**
+- 持卡评估 `evaluate_owned_card`：年费 vs 权益估值 vs 近 12 月实际返利 → 保留/销卡信号。
+- 新卡评估 `evaluate_prospect_card`：年费 + 开卡礼 + 权益估值 → 首年/长期净收益。
+  agent 在信息不足时会用 `web_search` 查公开资料。
+- 月度/年度报告：按卡、商户、优惠汇总消费与返利。
+- API：`/api/analysis/cards/{id}`、`/api/analysis/prospect`、`/api/analysis/monthly`、`/yearly`。
+- Web UI：`/reports` 汇总页。
+- 数据模型扩展：`Card.opening_bonus_value`、`Benefit.estimated_annual_value`。
+- 启动时自增 `ALTER TABLE`，老 DB 无需手动迁移。
+
 ## 技术栈
 
 - Python 3.10+ / FastAPI / SQLAlchemy 2

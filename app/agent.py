@@ -24,13 +24,18 @@ SYSTEM_PROMPT = """\
 2. 管理权益：记录每张卡的固定权益（例如贵宾厅、酒店会籍、生日积分等）。
 3. 管理优惠：记录限时优惠活动（例如某商户双倍积分、笔笔返现等），包含有效期。
 4. 推荐用卡：根据商户/金额/类型，结合当前生效的优惠，推荐最该刷的卡。
-5. 新卡评估：结合年费、开卡礼、权益价值，给出是否值得申请的建议。
+5. 持卡评估：用 evaluate_owned_card 算某张已有卡的净年价值，判断要不要继续留。
+6. 新卡评估：用 evaluate_prospect_card 算年费 + 开卡礼 + 权益 的净收益。
+   信息不足时用 web_search 查公开资料（银行官网/媒体评测）。
+7. 报告：用 monthly_report / yearly_report 汇总实际薅到的价值。
+8. 数据抓取：可调用 run_scraper 让爬虫抓最新优惠。
 
 原则：
 - 回复使用简体中文，除非用户明确用英文。
 - 信息不明确时先用工具查询 DB，不要凭空捏造。
 - 新增任何数据前，先把你要存的关键字段复述给用户确认，除非用户已经明确同意。
 - 涉及金额/日期时，如果用户只给了模糊信息（"下个月"、"几百块"），主动澄清。
+- 新卡评估时如果用户只给了卡名，先 web_search 查年费/权益，结果写成结构化输入再调 evaluate_prospect_card。
 - 回答简洁，不要啰嗦；关键数据用表格或列表。
 """
 
@@ -220,6 +225,65 @@ TOOLS: list[dict[str, Any]] = [
             "properties": {"limit": {"type": "integer", "default": 10}},
         },
     },
+    {
+        "name": "evaluate_owned_card",
+        "description": "评估用户手里某张卡的净年价值：年费 vs 权益 vs 实际消费返利，给出保留/销卡建议。",
+        "input_schema": {
+            "type": "object",
+            "properties": {"card_id": {"type": "integer"}},
+            "required": ["card_id"],
+        },
+    },
+    {
+        "name": "evaluate_prospect_card",
+        "description": (
+            "评估一张尚未申请的新卡：输入年费、开卡礼、权益（每项给 title 和预估年价值），"
+            "输出首年净收益、长期净收益、是否推荐。"
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "issuer": {"type": "string"},
+                "name": {"type": "string"},
+                "annual_fee": {"type": "number"},
+                "annual_fee_waiver": {"type": "string"},
+                "opening_bonus_value": {"type": "number"},
+                "benefits": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string"},
+                            "estimated_annual_value": {"type": "number"},
+                        },
+                        "required": ["title"],
+                    },
+                },
+            },
+            "required": ["annual_fee", "benefits"],
+        },
+    },
+    {
+        "name": "monthly_report",
+        "description": "月度薅羊毛报告：按卡/商户/优惠汇总该月消费与返利。",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "year": {"type": "integer"},
+                "month": {"type": "integer"},
+            },
+        },
+    },
+    {
+        "name": "yearly_report",
+        "description": "年度薅羊毛报告。",
+        "input_schema": {
+            "type": "object",
+            "properties": {"year": {"type": "integer"}},
+        },
+    },
+    # Anthropic server-side tool: 让模型联网查新卡资料
+    {"type": "web_search_20260209", "name": "web_search"},
 ]
 
 
@@ -363,6 +427,31 @@ def execute_tool(db: Session, name: str, input_: dict) -> Any:
 
         return runner.list_runs(db, limit=input_.get("limit", 10))
 
+    if name == "evaluate_owned_card":
+        from app import analysis
+
+        return analysis.evaluate_owned_card(db, input_["card_id"])
+
+    if name == "evaluate_prospect_card":
+        from app import analysis
+
+        return analysis.evaluate_prospect_card(input_)
+
+    if name == "monthly_report":
+        from app import analysis
+        from datetime import date as _d
+
+        today = _d.today()
+        return analysis.monthly_report(
+            db, input_.get("year", today.year), input_.get("month", today.month)
+        )
+
+    if name == "yearly_report":
+        from app import analysis
+        from datetime import date as _d
+
+        return analysis.yearly_report(db, input_.get("year", _d.today().year))
+
     return {"error": f"unknown tool: {name}"}
 
 
@@ -441,13 +530,19 @@ def run_chat(db: Session, user_message: str, history: list[dict] | None = None) 
         # Record assistant's content blocks (preserves tool_use for next turn).
         messages.append({"role": "assistant", "content": [b.model_dump() for b in response.content]})
 
+        if response.stop_reason == "pause_turn":
+            # server-side tool (e.g. web_search) hit its internal limit; resume.
+            continue
+
         if response.stop_reason != "tool_use":
             final_text = "\n".join(
                 b.text for b in response.content if b.type == "text"
             )
             break
 
-        # Execute every tool_use block; pack results into a single user message.
+        # Execute every client-side tool_use block; pack results into a single user message.
+        # Server-side tool results (web_search_tool_result etc.) come back inline and
+        # should not be echoed as tool_result by us.
         tool_results = []
         for block in response.content:
             if block.type != "tool_use":
