@@ -195,6 +195,31 @@ TOOLS: list[dict[str, Any]] = [
         "description": "获取今天的日期。",
         "input_schema": {"type": "object", "properties": {}},
     },
+    {
+        "name": "list_scrapers",
+        "description": "列出可用的爬虫数据源。",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "run_scraper",
+        "description": "运行指定名字的爬虫，抓取最新优惠并写入数据库（会去重）。可能较慢。",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "爬虫 name，例如 kahui / demo"},
+                "limit": {"type": "integer", "description": "最多抓多少条"},
+            },
+            "required": ["name"],
+        },
+    },
+    {
+        "name": "list_scrape_runs",
+        "description": "查看最近的爬虫运行记录（成功/失败/条数）。",
+        "input_schema": {
+            "type": "object",
+            "properties": {"limit": {"type": "integer", "default": 10}},
+        },
+    },
 ]
 
 
@@ -322,6 +347,21 @@ def execute_tool(db: Session, name: str, input_: dict) -> Any:
             amount=input_.get("amount"),
             category=input_.get("category"),
         )
+
+    if name == "list_scrapers":
+        from app.scrapers import registry
+
+        return registry.available()
+
+    if name == "run_scraper":
+        from app.scrapers import runner
+
+        return runner.run_scraper(db, input_["name"], limit=input_.get("limit"))
+
+    if name == "list_scrape_runs":
+        from app.scrapers import runner
+
+        return runner.list_runs(db, limit=input_.get("limit", 10))
 
     return {"error": f"unknown tool: {name}"}
 

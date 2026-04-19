@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.db import init_db
-from app.routes import benefits, cards, chat, offers, transactions
+from app.routes import benefits, cards, chat, offers, scrapers, transactions
 
 
 ROOT = Path(__file__).resolve().parent
@@ -25,6 +25,7 @@ app.include_router(benefits.router)
 app.include_router(offers.router)
 app.include_router(transactions.router)
 app.include_router(chat.router)
+app.include_router(scrapers.router)
 
 static_dir = ROOT / "static"
 if static_dir.exists():
@@ -49,3 +50,8 @@ def offers_page(request: Request):
 @app.get("/chat", response_class=HTMLResponse)
 def chat_page(request: Request):
     return templates.TemplateResponse(request, "chat.html")
+
+
+@app.get("/scrapers", response_class=HTMLResponse)
+def scrapers_page(request: Request):
+    return templates.TemplateResponse(request, "scrapers.html")

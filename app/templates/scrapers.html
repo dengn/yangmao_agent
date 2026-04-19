@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}爬虫{% endblock %}
+{% block content %}
+<div class="card-panel">
+  <h2>爬虫数据源</h2>
+  <div id="scrapers-list" class="muted">加载中...</div>
+</div>
+
+<div class="card-panel">
+  <h3>运行历史</h3>
+  <div id="runs-list" class="muted">加载中...</div>
+</div>
+
+<script>
+async function loadScrapers() {
+  const r = await fetch('/api/scrapers');
+  const data = await r.json();
+  if (!data.length) {
+    document.getElementById('scrapers-list').textContent = '暂无爬虫注册。';
+    return;
+  }
+  document.getElementById('scrapers-list').innerHTML = `<table>
+    <thead><tr><th>name</th><th>标签</th><th>说明</th><th></th></tr></thead>
+    <tbody>${data.map(s => `
+      <tr>
+        <td><code>${s.name}</code></td><td>${s.label}</td><td class="muted">${s.description||''}</td>
+        <td><button onclick="runScraper('${s.name}')">运行</button></td>
+      </tr>`).join('')}</tbody></table>`;
+}
+async function runScraper(name) {
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = '运行中...';
+  try {
+    const r = await fetch(`/api/scrapers/${name}/run`, {method: 'POST'});
+    const data = await r.json();
+    alert(`${data.status}: 抓到 ${data.items_found} 条，写入 ${data.items_upserted} 条${data.error? '\n错误: '+data.error:''}`);
+  } finally {
+    btn.disabled = false; btn.textContent = '运行';
+    loadRuns();
+  }
+}
+async function loadRuns() {
+  const r = await fetch('/api/scrapers/runs');
+  const data = await r.json();
+  if (!data.length) {
+    document.getElementById('runs-list').textContent = '还没跑过爬虫。';
+    return;
+  }
+  document.getElementById('runs-list').innerHTML = `<table>
+    <thead><tr><th>来源</th><th>状态</th><th>找到</th><th>入库</th><th>开始</th><th>结束</th><th>错误</th></tr></thead>
+    <tbody>${data.map(r => `
+      <tr>
+        <td>${r.source||''}</td>
+        <td style="color:${r.status==='ok'?'#6dd47e':r.status==='error'?'#ff6b6b':'#ffb800'}">${r.status}</td>
+        <td>${r.items_found}</td><td>${r.items_new}</td>
+        <td class="muted">${r.started_at||''}</td><td class="muted">${r.finished_at||''}</td>
+        <td class="muted">${r.error||''}</td>
+      </tr>`).join('')}</tbody></table>`;
+}
+loadScrapers();
+loadRuns();
+</script>
+{% endblock %}
