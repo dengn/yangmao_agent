@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+.Python
+build/
+dist/
+
+# Env
+.env
+.env.local
+
+# DB / data
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+data/*.sqlite*
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Scrape cache
+.cache/
+playwright/
+.scrape_cache/
+
+# Logs
+*.log
+logs/

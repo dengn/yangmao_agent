@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card-panel">
+  <h2>欢迎</h2>
+  <p>这是一个帮你管理信用卡优惠和权益的工具。</p>
+  <ul>
+    <li><a href="/cards">我的卡</a>：查看持有的信用卡、权益。</li>
+    <li><a href="/offers">优惠活动</a>：查看当前生效的优惠，过滤、搜索。</li>
+    <li><a href="/chat">对话</a>：用自然语言让 agent 帮你录入/查询/推荐。</li>
+  </ul>
+  <p class="muted">API 文档：<a href="/docs">/docs</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}薅羊毛 Agent{% endblock %}</title>
+  <style>
+    :root { --bg:#0f1115; --fg:#e6e6e6; --muted:#9aa0a6; --accent:#ffb800; --panel:#1a1d24; --border:#2a2f3a; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+           background: var(--bg); color: var(--fg); }
+    nav { display:flex; gap:16px; align-items:center; padding:12px 24px; border-bottom:1px solid var(--border); background:var(--panel); }
+    nav a { color: var(--fg); text-decoration: none; }
+    nav a.active { color: var(--accent); font-weight:600; }
+    nav h1 { font-size: 1rem; margin:0 24px 0 0; color: var(--accent); }
+    main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    h2 { margin-top: 0; }
+    table { width:100%; border-collapse: collapse; background: var(--panel); }
+    th, td { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align:left; vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; font-size: 0.9rem; }
+    .card-panel { background: var(--panel); border:1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    button, input, textarea, select { font: inherit; color: var(--fg); background: var(--bg); border:1px solid var(--border); border-radius: 6px; padding: 8px 12px; }
+    button { cursor:pointer; background: var(--accent); color:#111; border:none; font-weight:600; }
+    button.secondary { background: var(--panel); color: var(--fg); border:1px solid var(--border); }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .muted { color: var(--muted); font-size: 0.9rem; }
+    code { background: #111; padding: 1px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+<nav>
+  <h1>🐑 薅羊毛 Agent</h1>
+  <a href="/">首页</a>
+  <a href="/cards">我的卡</a>
+  <a href="/offers">优惠活动</a>
+  <a href="/chat">对话</a>
+</nav>
+<main>
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}对话{% endblock %}
+{% block content %}
+<div class="card-panel">
+  <h2>对话</h2>
+  <p class="muted">可以这样说：<br>
+    · 我刚办了招行经典白金，年费 3600，首年免年费<br>
+    · 这张卡有贵宾厅 6 次/年、高尔夫和酒店会籍权益<br>
+    · 招行最近有什么生效的优惠？<br>
+    · 今晚要在盒马吃饭，花大概 300 块，用哪张卡比较划算？
+  </p>
+</div>
+
+<div id="chat-box" class="card-panel" style="min-height:300px"></div>
+
+<div class="card-panel">
+  <form id="chat-form" class="row">
+    <textarea id="msg" rows="2" style="flex:1" placeholder="说点什么..."></textarea>
+    <button type="submit">发送</button>
+    <button type="button" class="secondary" onclick="resetChat()">清空上下文</button>
+  </form>
+</div>
+
+<script>
+let history = [];
+const box = document.getElementById('chat-box');
+
+function append(role, text) {
+  const color = role === 'user' ? '#ffb800' : '#74d0ff';
+  const label = role === 'user' ? '你' : 'Agent';
+  box.innerHTML += `<div style="margin-bottom:12px"><b style="color:${color}">${label}:</b><br>${text.replace(/\n/g,'<br>')}</div>`;
+  box.scrollTop = box.scrollHeight;
+}
+
+function appendTools(calls) {
+  if (!calls || !calls.length) return;
+  const rendered = calls.map(c =>
+    `→ <code>${c.name}(${JSON.stringify(c.input)})</code>`
+  ).join('<br>');
+  box.innerHTML += `<div class="muted" style="margin-bottom:12px">${rendered}</div>`;
+}
+
+document.getElementById('chat-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const m = document.getElementById('msg').value.trim();
+  if (!m) return;
+  append('user', m);
+  document.getElementById('msg').value = '';
+
+  const r = await fetch('/api/chat', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ message: m, history })
+  });
+  if (!r.ok) { append('agent', '出错了：' + await r.text()); return; }
+  const data = await r.json();
+  appendTools(data.tool_calls);
+  append('agent', data.reply);
+  history = data.history;
+});
+
+function resetChat() {
+  history = [];
+  box.innerHTML = '';
+}
+</script>
+{% endblock %}

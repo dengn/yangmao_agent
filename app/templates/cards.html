@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}我的卡{% endblock %}
+{% block content %}
+<div class="card-panel">
+  <h2>我的卡</h2>
+  <div id="cards-list" class="muted">加载中...</div>
+</div>
+
+<div class="card-panel">
+  <h3>新增卡片</h3>
+  <form id="add-card" class="row">
+    <input name="issuer" placeholder="发卡行 *" required>
+    <input name="name" placeholder="卡种名 *" required>
+    <input name="level" placeholder="等级（白金/钻石…）">
+    <input name="network" placeholder="VISA/UP/MC/AE">
+    <input name="annual_fee" type="number" step="1" placeholder="年费">
+    <button type="submit">添加</button>
+  </form>
+</div>
+
+<script>
+async function loadCards() {
+  const r = await fetch('/api/cards');
+  const data = await r.json();
+  if (!data.length) {
+    document.getElementById('cards-list').textContent = '还没有卡片。';
+    return;
+  }
+  const html = `<table>
+    <thead><tr><th>发卡行</th><th>卡种</th><th>等级</th><th>网络</th><th>年费</th><th>年费减免</th><th>积分规则</th><th></th></tr></thead>
+    <tbody>${data.map(c => `
+      <tr>
+        <td>${c.issuer}</td><td>${c.name}</td><td>${c.level||''}</td>
+        <td>${c.network||''}</td><td>${c.annual_fee||0}</td>
+        <td>${c.annual_fee_waiver||''}</td><td>${c.points_rule||''}</td>
+        <td><button class="secondary" onclick="delCard(${c.id})">删除</button></td>
+      </tr>`).join('')}</tbody></table>`;
+  document.getElementById('cards-list').innerHTML = html;
+}
+
+async function delCard(id) {
+  if (!confirm('删除这张卡（含权益）？')) return;
+  await fetch(`/api/cards/${id}`, {method:'DELETE'});
+  loadCards();
+}
+
+document.getElementById('add-card').addEventListener('submit', async e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = Object.fromEntries(fd.entries());
+  if (body.annual_fee) body.annual_fee = parseFloat(body.annual_fee);
+  const r = await fetch('/api/cards', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body),
+  });
+  if (r.ok) { e.target.reset(); loadCards(); }
+  else alert('添加失败：' + (await r.text()));
+});
+
+loadCards();
+</script>
+{% endblock %}

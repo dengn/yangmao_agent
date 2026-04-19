@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}优惠活动{% endblock %}
+{% block content %}
+<div class="card-panel">
+  <h2>优惠活动</h2>
+  <div class="row">
+    <input id="q" placeholder="关键词">
+    <input id="merchant" placeholder="商户">
+    <label><input id="active" type="checkbox" checked> 只看当前生效</label>
+    <button onclick="loadOffers()">查询</button>
+  </div>
+</div>
+
+<div class="card-panel">
+  <div id="offers-list" class="muted">加载中...</div>
+</div>
+
+<script>
+async function loadOffers() {
+  const q = document.getElementById('q').value.trim();
+  const merchant = document.getElementById('merchant').value.trim();
+  const active = document.getElementById('active').checked;
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (merchant) params.set('merchant', merchant);
+  if (active) params.set('active_only', 'true');
+  const r = await fetch('/api/offers?' + params.toString());
+  const data = await r.json();
+  if (!data.length) {
+    document.getElementById('offers-list').textContent = '没有匹配的优惠。';
+    return;
+  }
+  const html = `<table>
+    <thead><tr><th>标题</th><th>商户</th><th>类型</th><th>门槛</th><th>返利</th><th>上限</th><th>起止</th><th>来源</th><th></th></tr></thead>
+    <tbody>${data.map(o => `
+      <tr>
+        <td>${o.title}${o.description? '<br><span class="muted">'+o.description+'</span>':''}</td>
+        <td>${o.merchant||''}</td><td>${o.offer_type}</td>
+        <td>${o.min_spend||''}</td><td>${o.reward_value||''}</td><td>${o.reward_cap||''}</td>
+        <td>${o.starts_at||''} ~ ${o.ends_at||''}</td>
+        <td>${o.source_url? '<a href="'+o.source_url+'" target="_blank">'+o.source+'</a>' : o.source}</td>
+        <td><button class="secondary" onclick="delOffer(${o.id})">删除</button></td>
+      </tr>`).join('')}</tbody></table>`;
+  document.getElementById('offers-list').innerHTML = html;
+}
+async function delOffer(id) {
+  if (!confirm('删除这条优惠？')) return;
+  await fetch(`/api/offers/${id}`, {method:'DELETE'});
+  loadOffers();
+}
+loadOffers();
+</script>
+{% endblock %}
